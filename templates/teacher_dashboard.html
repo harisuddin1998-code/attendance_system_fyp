@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | AI Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome, Teacher</h1>
+        <p class="subtitle">Monitor Class Attendance in Real-Time</p>
+
+        <div class="dashboard-grid">
+            {% for session in sessions %}
+            <div class="glass-panel stat-card">
+                <h3>{{ session.classroom_name }}</h3>
+                <p>Camera: {{ session.camera_name }}</p>
+                <p>Started: {{ session.start_time }}</p>
+                <div class="stat-value" style="color: var(--success); font-size: 1.5rem;">Active</div>
+                <a href="{{ url_for('live_class', session_id=session.id) }}" class="btn btn-primary" style="margin-top: 1rem;">Monitor Live</a>
+            </div>
+            {% else %}
+            <div class="glass-panel stat-card" style="text-align: center;">
+                <h3>No Active Sessions</h3>
+                <p>No classes are currently running.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to HOD Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

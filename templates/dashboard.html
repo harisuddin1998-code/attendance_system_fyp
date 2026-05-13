@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Dashboard | AI Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome, HOD</h1>
+        <p class="subtitle">AI Facial Recognition Attendance Management System</p>
+        
+        <div style="text-align: right; margin-bottom: 1rem; display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap;">
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">Teacher Dashboard</a>
+            <a href="{{ url_for('manage_subjects') }}" class="btn btn-secondary">Manage Subjects</a>
+            <a href="{{ url_for('manage_teachers') }}" class="btn btn-secondary">Manage Teachers</a>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="glass-panel stat-card" style="position: relative;">
+                <h3>Total Students</h3>
+                <div class="stat-value">{{ total_students }}</div>
+                <p>Enrolled in Database</p>
+                <a href="{{ url_for('manage_students') }}" class="btn btn-primary" style="margin-top: 1rem;">Manage Students</a>
+            </div>
+            
+            <div class="glass-panel stat-card">
+                <h3>Total Cameras</h3>
+                <div class="stat-value" id="total-cameras">--</div>
+                <p>Active Camera Feeds</p>
+            </div>
+
+            <div class="glass-panel stat-card">
+                <h3>System Status</h3>
+                <div class="stat-value" style="color: var(--success); font-size: 2rem;">Ready</div>
+                <p>Multi-Class Multi-Camera Active</p>
+            </div>
+
+            <!-- Create New Class -->
+            <div class="glass-panel stat-card" style="border: 2px solid #9B59B6; justify-content: center; background: rgba(155, 89, 182, 0.1);">
+                <h3 style="color: #9B59B6;">🏫 Create New Class</h3>
+                <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">Add classroom with multiple cameras</p>
+                <form method="POST" action="/create_class">
+                    <div style="margin-bottom: 1rem;">
+                        <label for="class_name" style="display:block; margin-bottom:0.5rem; color:var(--text); font-size: 0.9rem;">Class Name:</label>
+                        <input type="text" name="class_name" id="class_name" placeholder="e.g., CS-101" required 
+                               style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--text); font-size: 0.9rem;">🚪 Door Camera (Face Recognition):</label>
+                        <input type="text" name="door_camera_ip" id="door_camera_ip" placeholder="e.g., 192.168.1.100:8080" 
+                               style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--text); font-size: 0.9rem;">📹 CCTV Camera 1 (Classroom):</label>
+                        <input type="text" name="cctv1_ip" id="cctv1_ip" placeholder="e.g., 192.168.1.101:8080" 
+                               style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display:block; margin-bottom:0.5rem; color:var(--text); font-size: 0.9rem;">📹 CCTV Camera 2 (Classroom):</label>
+                        <input type="text" name="cctv2_ip" id="cctv2_ip" placeholder="e.g., 192.168.1.102:8080" 
+                               style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                    </div>
+                    
+                    <button type="submit" class="btn" style="width: 100%; background: #9B59B6; color: white;">➕ Create Class with Cameras</button>
+                </form>
+            </div>
+
+            <!-- Gate Camera Session -->
+            <div class="glass-panel stat-card" style="border: 2px solid #FF6B6B; justify-content: center; background: rgba(255, 107, 107, 0.1);">
+                <h3 style="color: #FF6B6B;">🚪 Gate Entry Detection</h3>
+                <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">Detect who enters • Face Recognition • Timestamp</p>
+                <form method="POST" action="/start-gate">
+                    <div style="margin-bottom: 1rem;">
+                        <label for="classroom_id_gate" style="display:block; margin-bottom:0.5rem; color:var(--text);">Select Classroom:</label>
+                        <select name="classroom_id" id="classroom_id_gate" required style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                            {% for classroom in classrooms %}
+                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-danger" style="width: 100%;">▶ Start Gate Detection</button>
+                </form>
+            </div>
+
+            <!-- Class Camera Session -->
+            <div class="glass-panel stat-card" style="border: 2px solid #4ECDC4; justify-content: center; background: rgba(78, 205, 196, 0.1);">
+                <h3 style="color: #4ECDC4;">📚 Class Tracking & Attendance</h3>
+                <p style="margin-bottom: 1.5rem; font-size: 0.9rem;">Track students • DeepSORT • Attendance Mark</p>
+                <form method="POST" action="/start-class">
+                    <div style="margin-bottom: 1rem;">
+                        <label for="classroom_id_class" style="display:block; margin-bottom:0.5rem; color:var(--text);">Select Classroom:</label>
+                        <select name="classroom_id" id="classroom_id_class" required style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                            {% for classroom in classrooms %}
+                            <option value="{{ classroom.id }}">{{ classroom.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="subject_id" style="display:block; margin-bottom:0.5rem; color:var(--text);">Select Subject:</label>
+                        <select name="subject_id" id="subject_id" style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                            <option value="">-- Any Subject --</option>
+                            {% for subject in subjects %}
+                            <option value="{{ subject.id }}">{{ subject.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label for="teacher_id" style="display:block; margin-bottom:0.5rem; color:var(--text);">Select Teacher:</label>
+                        <select name="teacher_id" id="teacher_id" style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text);">
+                            <option value="">-- Any Teacher --</option>
+                            {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">▶ Start Class Tracking</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Class Management Section -->
+        <h2>Class Management</h2>
+        <div class="glass-panel">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>Total Cameras</th>
+                            <th>Camera Details</th>
+                            <th>Total Sessions</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="classes-table-body">
+                        {% for classroom in classrooms %}
+                        <tr>
+                            <td>{{ classroom.name }}</td>
+                            <td>
+                                {% set camera_count = 0 %}
+                                {% for camera in cameras %}
+                                {% if camera.classroom_id == classroom.id %}
+                                {% set camera_count = camera_count + 1 %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ camera_count }}
+                            </td>
+                            <td>
+                                {% for camera in cameras %}
+                                {% if camera.classroom_id == classroom.id %}
+                                <div style="margin: 0.25rem 0; font-size: 0.85rem;">
+                                    {% if camera.position == 'door' %}🚪{% elif camera.position == 'cctv1' %}📹1{% else %}📹2{% endif %}
+                                    {{ camera.position.title() }}: {{ camera.url.replace('http://', '') }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% set session_count = 0 %}
+                                {% for session in sessions %}
+                                {% if session.classroom_id == classroom.id %}
+                                {% set session_count = session_count + 1 %}
+                                {% endif %}
+                                {% endfor %}
+                                {{ session_count }}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('delete_class', classroom_id=classroom.id) }}" method="POST" style="display:inline;" 
+                                      onclick="return confirm('Delete {{ classroom.name }} and ALL its cameras? This cannot be undone!');">
+                                    <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2>Past Sessions</h2>
+        <div class="glass-panel table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Classroom</th>
+                        <th>Camera</th>
+                        <th>Subject</th>
+                        <th>Teacher</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                    <tr>
+                        <td>#{{ session.id }}</td>
+                        <td>{{ session.classroom_name or 'N/A' }}</td>
+                        <td>{{ session.camera_name or 'N/A' }}</td>
+                        <td>{{ session.subject_name or '-' }}</td>
+                        <td>{{ session.teacher_name or '-' }}</td>
+                        <td>{{ session.start_time }}</td>
+                        <td>{{ session.end_time or '-' }}</td>
+                        <td>
+                            {% if session.status == 'Ongoing' %}
+                                <span class="badge badge-success" style="background:var(--success);color:white;">Active</span>
+                            {% else %}
+                                <span class="badge badge-early">Ended</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if session.status == 'Ongoing' %}
+                                <a href="{{ url_for('live_class', session_id=session.id) }}" style="color:var(--primary);">Resume</a>
+                            {% else %}
+                                <a href="{{ url_for('report', session_id=session.id) }}" style="color:var(--primary);">View Report</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align:center;">No past sessions found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Update statistics every 30 seconds
+        function updateStats() {
+            fetch('/api/class_stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update total students
+                    const studentElements = document.querySelectorAll('.stat-value');
+                    if (studentElements[0]) {
+                        studentElements[0].textContent = data.total_students;
+                    }
+                    
+                    // Update total classes
+                    if (studentElements[1]) {
+                        studentElements[1].textContent = data.total_classes;
+                    }
+                    
+                    // Update total cameras
+                    const cameraElement = document.getElementById('total-cameras');
+                    if (cameraElement) {
+                        cameraElement.textContent = data.total_cameras;
+                    }
+                    
+                    // Update classes table
+                    const tbody = document.getElementById('classes-table-body');
+                    if (tbody && data.classes) {
+                        tbody.innerHTML = data.classes.map(cls => `
+                            <tr>
+                                <td>${cls.name}</td>
+                                <td>${cls.camera_count || 0}</td>
+                                <td>
+                                    ${cls.camera_details ? cls.camera_details.split(',').map(detail => 
+                                        `<div style="margin: 0.25rem 0; font-size: 0.85rem;">${detail.replace('door:', '🚪 Door:').replace('cctv1:', '📹 CCTV1:').replace('cctv2:', '📹 CCTV2:')}</div>`
+                                    ).join('') : 'No cameras'}
+                                </td>
+                                <td>${cls.total_sessions || 0}</td>
+                                <td>
+                                    <form action="/delete_class/${cls.id}" method="POST" style="display:inline;" 
+                                          onclick="return confirm('Delete ${cls.name} and ALL its cameras? This cannot be undone!');">
+                                        <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                })
+                .catch(error => console.log('Stats update error:', error));
+        }
+        
+        // Update stats on page load and every 30 seconds
+        updateStats();
+        setInterval(updateStats, 30000);
+        
+        // Form validation for class creation
+        document.addEventListener('DOMContentLoaded', function() {
+            const createForm = document.querySelector('form[action="/create_class"]');
+            if (createForm) {
+                createForm.addEventListener('submit', function(e) {
+                    const className = document.getElementById('class_name').value.trim();
+                    const doorIp = document.getElementById('door_camera_ip').value.trim();
+                    const cctv1Ip = document.getElementById('cctv1_ip').value.trim();
+                    const cctv2Ip = document.getElementById('cctv2_ip').value.trim();
+                    
+                    if (!className) {
+                        alert('Please enter a class name');
+                        e.preventDefault();
+                        return false;
+                    }
+                    
+                    if (!doorIp && !cctv1Ip && !cctv2Ip) {
+                        alert('Please enter at least one camera IP address');
+                        e.preventDefault();
+                        return false;
+                    }
+                    
+                    // Validate IP formats
+                    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}(:\d{1,5})?$/;
+                    const validateIp = (ip, label) => {
+                        if (ip && !ipRegex.test(ip)) {
+                            alert(`Please enter a valid IP address for ${label} (e.g., 192.168.1.100:8080)`);
+                            e.preventDefault();
+                            return false;
+                        }
+                        return true;
+                    };
+                    
+                    if (!validateIp(doorIp, 'Door Camera') || 
+                        !validateIp(cctv1Ip, 'CCTV Camera 1') || 
+                        !validateIp(cctv2Ip, 'CCTV Camera 2')) {
+                        return false;
+                    }
+                    
+                    const cameraCount = [doorIp, cctv1Ip, cctv2Ip].filter(ip => ip).length;
+                    return confirm(`Create class "${className}" with ${cameraCount} camera(s)?`);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

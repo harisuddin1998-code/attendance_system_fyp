@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Subjects | HOD Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <a href="{{ url_for('index') }}" style="color:var(--primary); text-decoration:none;">&larr; Back to Dashboard</a>
+        <h1 style="margin-top:1rem;">Manage Subjects</h1>
+        <p class="subtitle">Create and remove subjects used for class attendance sessions.</p>
+
+        <div class="glass-panel" style="margin-bottom: 1.5rem;">
+            <h3>Add New Subject</h3>
+            <form method="POST" action="{{ url_for('create_subject') }}" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:1; min-width:220px;">
+                    <label for="subject_name" style="display:block; margin-bottom:0.5rem; color:var(--text);">Subject Name</label>
+                    <input id="subject_name" name="subject_name" type="text" placeholder="e.g., Artificial Intelligence" style="width:100%; padding:0.75rem; border-radius:8px; border:1px solid var(--glass-border); background:var(--bg-secondary); color:white;" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="min-width:160px;">Create Subject</button>
+            </form>
+        </div>
+
+        <div class="glass-panel table-wrapper">
+            <h3>Subject List</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject in subjects %}
+                    <tr>
+                        <td>{{ subject.name }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_subject', subject_id=subject.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-danger" style="padding:0.4rem 0.8rem; font-size:0.9rem;" onclick="return confirm('Remove subject {{ subject.name }}? This may affect sessions.');">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" style="text-align:center;">No subjects created yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

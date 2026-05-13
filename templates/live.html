@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Class | AI Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .camera-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .camera-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .camera-card h4 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .camera-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 12px;
+            background: #111;
+            max-height: 240px;
+            object-fit: cover;
+        }
+        .camera-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+        .live-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.25rem;
+            align-items: start;
+        }
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .stat-tile {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 1rem;
+        }
+        .stat-tile h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.95rem;
+        }
+        .stat-value-large {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .info-box {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 0.8rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+            <div>
+                <h1 style="margin:0;">Live Class Preview</h1>
+                <p class="subtitle" style="margin:0.25rem 0 0 0;">Classroom: {{ classroom_name or 'Unknown' }} | Session #{{ session_id }}</p>
+                <p class="subtitle" style="margin:0.25rem 0 0 0;">Subject: {{ subject_name or 'Unassigned' }} | Teacher: {{ teacher_name or 'Unassigned' }}</p>
+            </div>
+            <form action="{{ url_for('end_session', session_id=session_id) }}" method="POST" style="margin:0;">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('End this session?');">🛑 End Session</button>
+            </form>
+        </div>
+
+        <div class="camera-grid">
+            {% for camera in cameras %}
+            <div class="camera-card">
+                <h4>{{ camera.position.title() }} - {{ camera.name }}</h4>
+                <img src="{{ url_for('video_feed_camera', session_id=session_id, camera_id=camera.id) }}?t={{ range(1, 1000000) | random }}" alt="{{ camera.name }}">
+                <div class="camera-meta">{{ camera.url.replace('http://', '') }}</div>
+            </div>
+            {% else %}
+            <div class="camera-card" style="grid-column: span 3; text-align:center;">
+                <p>No cameras assigned to this classroom.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="live-grid">
+            <div class="glass-panel" style="padding: 1rem;">
+                <h3 style="margin-top:0;">📊 Class Attendance & Tracking</h3>
+                <div class="info-row">
+                    <div class="info-box">
+                        <div style="font-size:0.9rem; color:var(--text-muted);">Recognized Students</div>
+                        <div id="recognized-count" class="stat-value-large">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div style="font-size:0.9rem; color:var(--text-muted);">YOLO Face Count</div>
+                        <div id="yolo-count" class="stat-value-large">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div style="font-size:0.9rem; color:var(--text-muted);">Active Tracks</div>
+                        <div id="tracking-count" class="stat-value-large">0</div>
+                    </div>
+                </div>
+
+                <div class="stat-tile">
+                    <h4>Camera Face Counts</h4>
+                    <div id="camera-counts" style="display:grid; gap:0.5rem;"></div>
+                </div>
+
+                <div class="table-wrapper" style="margin-top:1rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>First Seen</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-body">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted);">Waiting for detection data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-panel stats-panel" style="padding: 1rem;">
+                <div class="stat-tile" style="max-height: 400px; overflow-y: auto;">
+                    <h4>Recently Recognized Faces</h4>
+                    <div id="faces-container" style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.5rem;">
+                        <p style="color:var(--text-muted); font-size:0.9rem;">Waiting for detections...</p>
+                    </div>
+                </div>
+                <div class="stat-tile">
+                    <h4>Live Status</h4>
+                    <p style="margin: 0; color: var(--text-muted);">Your class preview is showing all assigned cameras simultaneously.</p>
+                </div>
+                <div class="stat-tile">
+                    <h4>Instructions</h4>
+                    <ul style="margin: 0.5rem 0 0 1rem; padding: 0; color: var(--text-muted);">
+                        <li>Watch all 3 camera streams together.</li>
+                        <li>Face recognition uses YOLO for student detection.</li>
+                        <li>End session when class finishes.</li>
+                        <li>Attendance records are saved automatically.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sessionId = {{ session_id }};
+
+        function updateLiveBoard() {
+            fetch(`/api/live_status/${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('recognized-count').textContent = data.recognized_students;
+                    document.getElementById('yolo-count').textContent = data.yolo_face_count;
+                    document.getElementById('tracking-count').textContent = data.tracking_count;
+
+                    const cameraCountsEl = document.getElementById('camera-counts');
+                    cameraCountsEl.innerHTML = Object.entries(data.camera_counts).map(([cameraId, count]) =>
+                        `<div style="display:flex; justify-content:space-between;"><span>Camera ${cameraId}</span><strong>${count}</strong></div>`
+                    ).join('');
+
+                    const tbody = document.getElementById('attendance-body');
+                    if (!data.students.length) {
+                        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">No student data yet.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = data.students.map(student => {
+                        const status = student.total_duration > 300 ? 'Present' : 'Detected';
+                        const badgeClass = student.total_duration > 300 ? 'badge-present' : 'badge-early';
+                        return `
+                            <tr>
+                                <td><strong>${student.name}</strong></td>
+                                <td>${student.student_id}</td>
+                                <td>${student.first_seen}</td>
+                                <td>${Math.round(student.total_duration)}s</td>
+                                <td><span class="badge ${badgeClass}">${status}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    // Populate recent faces panel
+                    const facesContainer = document.getElementById('faces-container');
+                    const recognized = data.students.filter(s => s.face_image);
+                    
+                    if (recognized.length === 0) {
+                        facesContainer.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem;">Waiting for detections...</p>';
+                    } else {
+                        // Reverse array to show newest at the top
+                        const sortedRecognized = [...recognized].reverse();
+                        facesContainer.innerHTML = sortedRecognized.map(student => `
+                            <div style="display:flex; align-items:center; gap:0.75rem; background: rgba(0,0,0,0.2); padding:0.5rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                <img src="${student.face_image}" alt="Face" style="width:45px; height:45px; object-fit:cover; border-radius:6px; border:1px solid var(--primary);">
+                                <div style="display:flex; flex-direction:column; line-height:1.2;">
+                                    <strong style="font-size:0.95rem; color:white;">${student.name}</strong>
+                                    <span style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">ID: ${student.student_id} • ${student.first_seen}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => console.error('Live update error:', error));
+        }
+
+        setInterval(updateLiveBoard, 2000);
+        updateLiveBoard();
+    </script>
+</body>
+</html>

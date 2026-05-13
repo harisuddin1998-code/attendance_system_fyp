@@ -1,0 +1,66 @@
+# ========================
+# Virtual Environments
+# ========================
+.venv/
+venv/
+venv310/
+venv311/
+venv_haris/
+env/
+
+# ========================
+# Python Cache & Bytecode
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ========================
+# DeepFace Model Cache
+# ========================
+.deepface/
+
+# ========================
+# Database Files
+# ========================
+*.db
+
+# ========================
+# Logs
+# ========================
+*.log
+
+# ========================
+# IDE / Editor Settings
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================
+# OS Generated Files
+# ========================
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ========================
+# Scratch / Temp Files
+# ========================
+scratch/
+
+# ========================
+# Distribution / Packaging
+# ========================
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ========================
+# Presentation Files (optional - large binary)
+# ========================
+*.pptx
