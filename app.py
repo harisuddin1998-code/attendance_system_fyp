@@ -303,6 +303,8 @@ def get_camera_info(camera_id):
     return camera
 
 
+
+
 def detect_faces_fast(frame):
     # Sirf opencv use karo — fastest backend, loop ki zaroorat nahi
     try:
