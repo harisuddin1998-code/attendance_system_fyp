@@ -6,7 +6,7 @@ os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"  # Force UDP 
 import re
 import cv2
 import sqlite3
-import numpy as np
+import numpy as np 
 import base64
 import time
 import threading
