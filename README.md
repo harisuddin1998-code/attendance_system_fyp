@@ -1,118 +1,105 @@
-# 🎓 AI-Powered Classroom Attendance System
+# Vision Sentinal
 
-A real-time face recognition based attendance management system built with **Flask**, **DeepFace**, and **OpenCV**.
+AI-powered classroom attendance system.
 
----
+Real-time, face-recognition attendance for classrooms. Cameras watch the room, recognise enrolled students and teachers, and record when each person arrived and left.
 
-## 📁 Project Structure
-
-```
-attendance_system_fyp/
-│
-├── app.py                     # Main Flask application
-├── attendance_tracker.py      # Attendance tracking logic
-├── enroll_faces.py            # Face enrollment utilities
-├── capture_and_enroll.py      # Camera capture & enrollment
-├── requirements.txt           # Python dependencies
-├── .gitignore                 # Git ignore rules
-│
-├── templates/                 # HTML Templates
-│   ├── dashboard.html
-│   ├── live.html
-│   ├── report.html
-│   ├── students.html
-│   ├── subjects.html
-│   ├── teachers.html
-│   └── teacher_dashboard.html
-│
-├── static/                    # Static Assets
-│   └── css/
-│       └── style.css
-│
-├── dataset/                   # Student face images for recognition
-│
-└── docs/                      # Documentation (optional)
-    ├── implementation_plan.md
-    └── white_paper.md
-```
+- **Backend:** Python · Flask · DeepFace (RetinaFace detector + Facenet512 embeddings) · OpenCV · SQLite
+- **Frontend:** React · TypeScript · Vite · Tailwind CSS · [shadcn/ui](https://ui.shadcn.com)
 
 ---
 
-## 🚀 Setup Guide (After Cloning)
+## Quick start (Windows)
 
-### Prerequisites
-- Python **3.10** or **3.11** (recommended)
-- pip (Python package manager)
-- Git
+You need **Python 3.11** (TensorFlow 2.13 does not support newer versions) and **Node.js 20+**.
 
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/harisuddin1998-code/attendance_system_fyp.git
-cd attendance_system_fyp
-```
-
-### Step 2: Create a Virtual Environment
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### Step 3: Install Dependencies
-```bash
+```powershell
+# 1. Python environment
+python -m venv venv                # must be Python 3.11 (or: py -3.11 -m venv venv / uv venv --python 3.11 venv)
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
 
-### Step 4: Initialize the Database
-```bash
-python reset_db.py
-```
+# 2. Build the web interface (once, and again after changing frontend code)
+cd frontend
+npm install
+npm run build
+cd ..
 
-### Step 5: Run the Application
-```bash
+# 3. Run
 python app.py
 ```
-The app will start at **http://127.0.0.1:5000**
+
+Open **http://127.0.0.1:5000**. Flask serves both the API and the built interface. The database (`attendance.db`) is created automatically on first run. The face models (~200 MB) download into `~/.deepface` the first time they're used.
+
+Use a different port with `$env:PORT=5055; python app.py`.
+
+### Frontend development (hot reload)
+
+Run the backend (`python app.py`) and, in a second terminal:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Open the URL Vite prints (http://localhost:5173). API, video and photo requests are proxied to Flask on port 5000.
 
 ---
 
-## 📦 Key Dependencies
+## Importing a recorded classroom video
 
-| Package | Purpose |
-|---------|---------|
-| Flask | Web framework |
-| DeepFace | Face recognition engine |
-| OpenCV | Camera & image processing |
-| TensorFlow | Deep learning backend |
-| NumPy | Numerical computing |
-| Pillow | Image handling |
-| deep-sort-realtime | Multi-object tracking |
+```powershell
+python import_video_attendance.py path\to\video.mp4 --classroom "Innovation Lab" --subject "Computer Science" --teacher "Prof. Ahmed"
+```
 
----
+The script:
+1. Detects faces with RetinaFace throughout the video.
+2. Groups them into people (by position and face similarity).
+3. Enrolls each person under a random name with a face photo.
+4. Creates the classroom, using the video as its camera, plus a completed session with everyone's attendance.
 
-## ⚙️ Features
-
-- ✅ Real-time face recognition attendance
-- ✅ Student registration with live camera
-- ✅ Teacher & subject management
-- ✅ Attendance reports & analytics
-- ✅ Multi-camera support
-- ✅ Dashboard with live preview
+The video is copied to `data/videos/` and plays on a loop as a "live camera". Start a session in that classroom to watch live recognition. People whose faces never turn towards the camera can't be identified.
 
 ---
 
-## 📝 Notes
+## How it works
 
-- The `dataset/` folder contains enrolled student face images
-- DeepFace models will be **automatically downloaded** on first run (~500MB)
-- The SQLite database (`attendance.db`) is created automatically by `reset_db.py`
+| Step | What happens |
+|---|---|
+| Enrol | A photo (webcam or upload) → RetinaFace finds the face → Facenet512 turns it into a 512-number signature stored in SQLite. |
+| Start session | Pick a classroom (+ subject and teacher). Each of its cameras streams to the browser. |
+| Recognise | About once per second, faces in the current frame are detected and compared (cosine distance < 0.45) with every enrolled student and teacher. |
+| Live view | The page polls `/api/live_status` every 2 s and shows who is in view. |
+| End session | Each recognised person is saved as **Present**, **Late** (first seen more than 25 min after start) or **Left early** (last seen more than 5 min before the end). Students enrolled in the subject who were never seen show as **Absent** in the report. |
+
+### Camera sources
+When adding a classroom, each camera can be:
+- `0` for this computer's webcam
+- `IP:port` for a phone camera app (DroidCam / IP Webcam)
+- a full `rtsp://` or `http://` URL
+- a path to a video file
+
+### Project layout
+```
+app.py                       Flask API, recognition pipeline, serves frontend/dist
+import_video_attendance.py   Enrol people + record attendance from a recorded video
+attendance_tracker.py        Stand-alone OpenCV-window tracker (no web UI)
+frontend/                    React + shadcn/ui app (src/pages = one file per page)
+static/faces/                Face thumbnails (git-ignored: biometric data)
+data/videos/                 Imported videos (git-ignored)
+```
+
+### API (JSON)
+`GET /api/overview` · `GET|POST /api/sessions` · `GET /api/sessions/<id>` · `POST /api/sessions/<id>/end` · `GET /api/sessions/<id>/report` · `GET /api/live_status/<id>` · `GET /video_feed/<session>/<camera>` (MJPEG) · `GET|POST /api/students` · `PATCH|DELETE /api/students/<id>` · `GET|POST /api/teachers` · `POST /api/teachers/<id>/face` · `DELETE /api/teachers/<id>` · `GET|POST /api/subjects` · `DELETE /api/subjects/<id>` · `GET|POST /api/classrooms` · `DELETE /api/classrooms/<id>`
 
 ---
 
-## 👨‍💻 Author
+## Privacy
 
-**Haris Uddin** — Final Year Project 2026
+Face photos and signatures are biometric data. They stay on this machine: `attendance.db`, `static/faces/` and `data/` are git-ignored. Deleting a student or teacher removes their face photo as well.
+
+---
+
+## Author
+
+**Haris Uddin**, Final Year Project 2026

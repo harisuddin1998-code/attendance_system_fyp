@@ -64,3 +64,12 @@ build/
 # Presentation Files (optional - large binary)
 # ========================
 *.pptx
+
+# ========================
+# Runtime data (face photos are biometric data - never commit)
+# ========================
+static/faces/
+data/
+
+# Browser-automation screenshots
+.playwright-mcp/
